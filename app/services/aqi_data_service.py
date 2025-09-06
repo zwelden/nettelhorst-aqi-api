@@ -1,6 +1,6 @@
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -165,6 +165,82 @@ class AqiDataService:
                 results[location_id] = 0
         
         return results
+    
+    def get_history_by_hours(self, location_id: int, hours: int = 24) -> List[Aqi5MinuteHistory]:
+        """
+        Get AQI history data for a location for the past N hours
+        
+        Args:
+            location_id: The external location ID
+            hours: Number of hours to retrieve data for (default 24)
+            
+        Returns:
+            List of Aqi5MinuteHistory objects sorted by measure_time descending
+        """
+        try:
+            with SessionLocal() as db:
+                # First get the AqiLocation by location_id
+                aqi_location = db.query(AqiLocation).filter(
+                    AqiLocation.location_id == location_id
+                ).first()
+                
+                if not aqi_location:
+                    logger.warning(f"No AQI location found for location_id {location_id}")
+                    return []
+                
+                # Calculate cutoff time
+                cutoff_time = datetime.now() - timedelta(hours=hours)
+                
+                # Query history records
+                history_records = db.query(Aqi5MinuteHistory).filter(
+                    Aqi5MinuteHistory.aqi_location_id == aqi_location.id,
+                    Aqi5MinuteHistory.measure_time >= cutoff_time
+                ).order_by(Aqi5MinuteHistory.measure_time.desc()).all()
+                
+                logger.info(f"Retrieved {len(history_records)} history records for location {location_id} (past {hours} hours)")
+                return history_records
+                
+        except Exception as e:
+            logger.error(f"Error retrieving history for location {location_id}: {str(e)}")
+            raise
+    
+    def get_history_by_days(self, location_id: int, days: int) -> List[Aqi5MinuteHistory]:
+        """
+        Get AQI history data for a location for the past N days
+        
+        Args:
+            location_id: The external location ID
+            days: Number of days to retrieve data for
+            
+        Returns:
+            List of Aqi5MinuteHistory objects sorted by measure_time descending
+        """
+        try:
+            with SessionLocal() as db:
+                # First get the AqiLocation by location_id
+                aqi_location = db.query(AqiLocation).filter(
+                    AqiLocation.location_id == location_id
+                ).first()
+                
+                if not aqi_location:
+                    logger.warning(f"No AQI location found for location_id {location_id}")
+                    return []
+                
+                # Calculate cutoff time
+                cutoff_time = datetime.now() - timedelta(days=days)
+                
+                # Query history records
+                history_records = db.query(Aqi5MinuteHistory).filter(
+                    Aqi5MinuteHistory.aqi_location_id == aqi_location.id,
+                    Aqi5MinuteHistory.measure_time >= cutoff_time
+                ).order_by(Aqi5MinuteHistory.measure_time.desc()).all()
+                
+                logger.info(f"Retrieved {len(history_records)} history records for location {location_id} (past {days} days)")
+                return history_records
+                
+        except Exception as e:
+            logger.error(f"Error retrieving history for location {location_id}: {str(e)}")
+            raise
 
 
 aqi_data_service = AqiDataService()
