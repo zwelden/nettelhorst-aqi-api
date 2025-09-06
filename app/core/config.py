@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     SCHEDULER_JOB_DEFAULTS_COALESCE: bool = False
     SCHEDULER_JOB_DEFAULTS_MAX_INSTANCES: int = 1
     
+    # AirGradient API Settings
+    AIRGRADIENT_API_TOKEN: str
+    AIRGRADIENT_API_BASE_URL: str = "https://api.airgradient.com/public/api/v1"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

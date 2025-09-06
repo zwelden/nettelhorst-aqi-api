@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .aqi_location import AqiLocationResponse
 
 
 class Aqi5MinuteHistoryBase(BaseModel):
@@ -29,10 +32,6 @@ class Aqi5MinuteHistoryResponse(Aqi5MinuteHistoryBase):
 
 
 class Aqi5MinuteHistoryWithLocation(Aqi5MinuteHistoryResponse):
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from .aqi_location import AqiLocationResponse
-    
     location: Optional["AqiLocationResponse"] = None
     
     class Config:

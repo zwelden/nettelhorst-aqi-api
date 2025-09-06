@@ -8,12 +8,13 @@ A FastAPI backend application for monitoring Air Quality Index (AQI) data at Net
 - PostgreSQL database with SQLAlchemy ORM
 - Database migrations with Alembic
 - Scheduled tasks with APScheduler
+- **Automated AirGradient API data collection** - pulls air quality data every 15 minutes
 - AQI location and history tracking
 - JSONB support for flexible measurement data storage
-- Structured logging
+- Structured logging with task execution tracking
 - Environment-based configuration
 - CORS middleware
-- Error handling
+- Error handling and resilience
 
 ## Project Structure
 
@@ -51,7 +52,7 @@ app/
 3. **Configure environment variables:**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials
+   # Edit .env with your database credentials and AirGradient API token
    ```
 
 4. **Create database:**
@@ -104,6 +105,18 @@ alembic history
 ## Scheduled Tasks
 
 Tasks are defined in `app/tasks/scheduled.py` and registered automatically on application startup. The scheduler uses PostgreSQL to persist job state.
+
+### Active Scheduled Tasks
+
+- **AirGradient Data Pull** (`pull_airgradient_data`):
+  - Runs every 15 minutes
+  - Fetches the last hour's air quality data from AirGradient API
+  - Processes all locations in the `aqi_location` table
+  - Saves measurement data to `aqi_5_minute_history` table
+  - Prevents duplicate data insertion
+  - Logs all activity to `task_logs` table
+
+### Adding New Scheduled Tasks
 
 To add a new scheduled task:
 
@@ -169,7 +182,37 @@ Tracks scheduled task execution:
 ## Environment Variables
 
 See `.env.example` for all available configuration options:
+
+### Database
 - `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_URL_ASYNC`: Async PostgreSQL connection string (auto-generated if not provided)
+
+### Application
 - `DEBUG`: Enable debug mode
-- `SCHEDULER_TIMEZONE`: Timezone for scheduled tasks
-- And more...
+- `API_V1_PREFIX`: API route prefix (default: `/api/v1`)
+
+### Scheduler
+- `SCHEDULER_TIMEZONE`: Timezone for scheduled tasks (default: `UTC`)
+- `SCHEDULER_JOB_DEFAULTS_COALESCE`: Job coalescing setting
+- `SCHEDULER_JOB_DEFAULTS_MAX_INSTANCES`: Maximum job instances
+
+### AirGradient API
+- `AIRGRADIENT_API_TOKEN`: **Required** - API token for AirGradient API access
+- `AIRGRADIENT_API_BASE_URL`: AirGradient API base URL (default: `https://api.airgradient.com/public/api/v1`)
+
+## Monitoring and Troubleshooting
+
+### Task Execution Monitoring
+- Check `task_logs` table for scheduled task execution history
+- View application logs in `logs/` directory
+- Monitor task status: `started`, `completed`, `failed`
+
+### Data Collection Status
+- Verify data collection in `aqi_5_minute_history` table
+- Check for recent timestamps in `measure_time` column
+- Review `measure_data` JSONB field for complete API response data
+
+### Common Issues
+- **No data being collected**: Verify `AIRGRADIENT_API_TOKEN` is valid
+- **Task failures**: Check `task_logs.error_message` for details
+- **Missing locations**: Ensure locations exist in `aqi_location` table
