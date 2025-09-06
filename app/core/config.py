@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     AIRGRADIENT_API_TOKEN: str
     AIRGRADIENT_API_BASE_URL: str = "https://api.airgradient.com/public/api/v1"
     
+    # Historical Data Seeding Settings
+    HISTORICAL_SEED_DAYS_BACK: int = 130
+    HISTORICAL_SEED_BATCH_SIZE_DAYS: int = 7
+    HISTORICAL_SEED_DELAY_BETWEEN_REQUESTS: float = 0.5
+    HISTORICAL_SEED_DELAY_BETWEEN_LOCATIONS: float = 1.0
+    HISTORICAL_SEED_VALIDATE_API_FIRST: bool = True
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -37,6 +44,32 @@ class Settings(BaseSettings):
         if v is None and "DATABASE_URL" in values.data:
             sync_url = str(values.data["DATABASE_URL"])
             return sync_url.replace("postgresql://", "postgresql+asyncpg://")
+        return v
+    
+    @field_validator("HISTORICAL_SEED_DAYS_BACK")
+    def validate_historical_days_back(cls, v):
+        if v <= 0:
+            raise ValueError("HISTORICAL_SEED_DAYS_BACK must be greater than 0")
+        if v > 365:
+            raise ValueError("HISTORICAL_SEED_DAYS_BACK should not exceed 365 days for performance reasons")
+        return v
+    
+    @field_validator("HISTORICAL_SEED_BATCH_SIZE_DAYS")
+    def validate_historical_batch_size(cls, v):
+        if v <= 0:
+            raise ValueError("HISTORICAL_SEED_BATCH_SIZE_DAYS must be greater than 0")
+        return v
+    
+    @field_validator("HISTORICAL_SEED_DELAY_BETWEEN_REQUESTS")
+    def validate_historical_request_delay(cls, v):
+        if v < 0:
+            raise ValueError("HISTORICAL_SEED_DELAY_BETWEEN_REQUESTS cannot be negative")
+        return v
+    
+    @field_validator("HISTORICAL_SEED_DELAY_BETWEEN_LOCATIONS")
+    def validate_historical_location_delay(cls, v):
+        if v < 0:
+            raise ValueError("HISTORICAL_SEED_DELAY_BETWEEN_LOCATIONS cannot be negative")
         return v
 
 
