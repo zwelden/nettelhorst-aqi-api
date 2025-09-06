@@ -117,7 +117,8 @@ class AqiDataService:
                         history_record = Aqi5MinuteHistory(
                             measure_time=measure_time,
                             aqi_location_id=aqi_location.id,
-                            measure_data=measure_data_value
+                            measure_data=measure_data_value,
+                            updated_at=datetime.now()
                         )
                         
                         db.add(history_record)
