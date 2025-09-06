@@ -1,6 +1,6 @@
-# FastAPI Backend with PostgreSQL and APScheduler
+# Nettelhorst AQI Backend
 
-A production-ready FastAPI backend with PostgreSQL database integration and scheduled task management using APScheduler.
+A FastAPI backend application for monitoring Air Quality Index (AQI) data at Nettelhorst, with PostgreSQL database integration and scheduled task management using APScheduler.
 
 ## Features
 
@@ -8,6 +8,8 @@ A production-ready FastAPI backend with PostgreSQL database integration and sche
 - PostgreSQL database with SQLAlchemy ORM
 - Database migrations with Alembic
 - Scheduled tasks with APScheduler
+- AQI location and history tracking
+- JSONB support for flexible measurement data storage
 - Structured logging
 - Environment-based configuration
 - CORS middleware
@@ -129,12 +131,40 @@ pytest -v
 pytest --cov=app
 ```
 
+## Database Schema
+
+The application includes the following main database tables:
+
+### AQI Location (`aqi_location`)
+Stores information about AQI monitoring locations:
+- `id`: Primary key
+- `location_id`: Unique location identifier
+- `location_name`: Human-readable location name
+- `location_description`: Detailed location description
+- `serial_no`: Device serial number (24 chars max)
+- `model`: Device model (120 chars max)
+- `firmware_version`: Device firmware version (10 chars max)
+- `created_at`, `updated_at`: Automatic timestamps
+
+### AQI 5-Minute History (`aqi_5_minute_history`)
+Stores AQI measurement data at 5-minute intervals:
+- `id`: Primary key
+- `measure_time`: Timestamp of measurement (indexed for performance)
+- `aqi_location_id`: Foreign key to `aqi_location.id`
+- `measure_data`: JSONB field for flexible measurement data storage
+- `created_at`, `updated_at`: Automatic timestamps
+
+### Task Logs (`task_logs`)
+Tracks scheduled task execution:
+- Task execution status, timestamps, and error handling
+
 ## Development
 
 - The application uses structured logging with rotation
 - Logs are stored in the `logs/` directory
 - Debug mode can be enabled via the `DEBUG` environment variable
 - The scheduler stores job state in the PostgreSQL database
+- All models must be imported in `app/models/__init__.py` for Alembic to detect them
 
 ## Environment Variables
 

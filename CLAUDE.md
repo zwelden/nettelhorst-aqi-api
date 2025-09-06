@@ -108,8 +108,43 @@ The application follows a layered architecture with clear separation of concerns
 
 ### Database Schema
 
-Currently includes:
-- `TaskLog` model: Tracks scheduled task execution history
+The application includes the following main database tables:
+
+#### AQI Location (`aqi_location`)
+Stores information about AQI monitoring locations and devices:
+- `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
+- `location_id` (INTEGER, NOT NULL): Unique location identifier
+- `location_name` (TEXT, NOT NULL): Human-readable location name
+- `location_description` (TEXT, NOT NULL): Detailed location description
+- `serial_no` (VARCHAR(24), NOT NULL): Device serial number
+- `model` (VARCHAR(120), NOT NULL): Device model information
+- `firmware_version` (VARCHAR(10), NOT NULL): Device firmware version
+- `created_at` (TIMESTAMP(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP): Creation timestamp
+- `updated_at` (TIMESTAMP(3), NOT NULL): Last update timestamp (auto-updated)
+
+#### AQI 5-Minute History (`aqi_5_minute_history`)
+Stores AQI measurement data at 5-minute intervals:
+- `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
+- `measure_time` (TIMESTAMP(3), NOT NULL, INDEXED): Timestamp of measurement (indexed for performance)
+- `aqi_location_id` (INTEGER, NOT NULL, FK): Foreign key to `aqi_location.id`
+- `measure_data` (JSONB, NOT NULL): Flexible measurement data storage in JSON format
+- `created_at` (TIMESTAMP(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP): Creation timestamp
+- `updated_at` (TIMESTAMP(3), NOT NULL): Last update timestamp (auto-updated)
+
+#### Task Logs (`task_logs`)
+Tracks scheduled task execution history:
+- `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
+- `task_name` (STRING, NOT NULL, INDEXED): Name of the executed task
+- `status` (STRING, NOT NULL): Execution status ('started', 'completed', 'failed')
+- `started_at` (DATETIME): Task start timestamp
+- `completed_at` (DATETIME, NULLABLE): Task completion timestamp
+- `error_message` (TEXT, NULLABLE): Error details if task failed
+- `result` (TEXT, NULLABLE): Task execution result
+- `is_successful` (BOOLEAN, DEFAULT FALSE): Success flag
+
+#### Key Relationships
+- `aqi_5_minute_history.aqi_location_id` → `aqi_location.id` (Foreign Key)
+- SQLAlchemy relationships configured for easy navigation between models
 
 ### Important Configuration
 
@@ -132,7 +167,7 @@ When running, interactive documentation available at:
 ## Important Notes
 
 - Always activate the virtual environment before running any commands
-- Database name is `nettelhorst_aqi` (not a generic name)
+- Database name is `nettelhorst_aqi` 
 - Scheduler stores job state in PostgreSQL, survives restarts
 - Logs are written to `logs/` directory with rotation
 - All models must be imported in `app/models/__init__.py` for Alembic to detect them
