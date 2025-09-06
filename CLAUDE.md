@@ -55,6 +55,7 @@ pytest
 
 # Run specific test file
 pytest tests/test_health.py
+pytest tests/test_locations.py
 
 # Run with verbose output
 pytest -v
@@ -62,6 +63,12 @@ pytest -v
 # Run with coverage
 pytest --cov=app
 ```
+
+#### Test Structure
+- `tests/conftest.py`: SQLite test database configuration with JSONB compatibility
+- `tests/test_health.py`: Health endpoint tests
+- `tests/test_locations.py`: AQI locations endpoint tests (6 comprehensive test cases)
+- Tests use temporary SQLite databases for isolation (no mocks required)
 
 ## Architecture Overview
 
@@ -171,6 +178,10 @@ When running, interactive documentation available at:
 ### Current Endpoints
 
 - `GET /api/v1/health`: Basic health check endpoint
+- `GET /api/v1/locations/`: Retrieve all AQI monitoring locations
+  - Returns JSON array of location objects with complete metadata
+  - Uses `AqiDataService` for database operations
+  - Includes location details, device information, and timestamps
 
 ## Important Notes
 

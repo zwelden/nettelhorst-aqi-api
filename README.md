@@ -86,6 +86,16 @@ Once running, visit:
 - Alternative docs: http://localhost:8000/api/v1/redoc
 - OpenAPI schema: http://localhost:8000/api/v1/openapi.json
 
+### Available Endpoints
+
+#### Health Check
+- `GET /api/v1/health` - Application health status
+
+#### AQI Locations
+- `GET /api/v1/locations/` - Retrieve all AQI monitoring locations
+  - Returns JSON array of location objects with metadata
+  - Includes location details, device information, and timestamps
+
 ## Database Migrations
 
 ```bash
