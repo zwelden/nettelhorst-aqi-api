@@ -34,6 +34,9 @@ alembic downgrade -1
 
 # View migration history
 alembic history
+
+# Seed database with initial data
+python seed_database.py
 ```
 
 ### Running the Application
@@ -98,6 +101,11 @@ The application follows a layered architecture with clear separation of concerns
    - `scheduled.py`: Task definitions and registration
    - Tasks persist in PostgreSQL via APScheduler's SQLAlchemyJobStore
    - Registered during application startup
+
+7. **Database Seeding** (`app/db/`)
+   - `seed.py`: Database seeding functions and utilities
+   - Contains initial data for AQI locations
+   - Prevents duplicate entries during seeding operations
 
 ### Key Design Patterns
 
