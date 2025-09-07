@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
-from app.tasks.scheduled import _round_down_to_half_hour, _get_30_minute_windows, _average_measure_data
+from app.tasks.aggregation_task import round_down_to_half_hour, get_30_minute_windows, average_measure_data
 from app.models.aqi_5_minute_history import Aqi5MinuteHistory
 
 
@@ -9,20 +9,20 @@ def test_round_down_to_half_hour():
     """Test rounding datetime down to nearest half hour"""
     # Test times at exact half hour boundaries
     dt1 = datetime(2023, 1, 1, 12, 0, 0)
-    assert _round_down_to_half_hour(dt1) == datetime(2023, 1, 1, 12, 0, 0)
+    assert round_down_to_half_hour(dt1) == datetime(2023, 1, 1, 12, 0, 0)
     
     dt2 = datetime(2023, 1, 1, 12, 30, 0)
-    assert _round_down_to_half_hour(dt2) == datetime(2023, 1, 1, 12, 30, 0)
+    assert round_down_to_half_hour(dt2) == datetime(2023, 1, 1, 12, 30, 0)
     
     # Test times that need rounding down
     dt3 = datetime(2023, 1, 1, 12, 15, 30)
-    assert _round_down_to_half_hour(dt3) == datetime(2023, 1, 1, 12, 0, 0)
+    assert round_down_to_half_hour(dt3) == datetime(2023, 1, 1, 12, 0, 0)
     
     dt4 = datetime(2023, 1, 1, 12, 45, 45)
-    assert _round_down_to_half_hour(dt4) == datetime(2023, 1, 1, 12, 30, 0)
+    assert round_down_to_half_hour(dt4) == datetime(2023, 1, 1, 12, 30, 0)
     
     dt5 = datetime(2023, 1, 1, 12, 59, 59, 999999)
-    assert _round_down_to_half_hour(dt5) == datetime(2023, 1, 1, 12, 30, 0)
+    assert round_down_to_half_hour(dt5) == datetime(2023, 1, 1, 12, 30, 0)
 
 
 def test_get_30_minute_windows():
@@ -30,7 +30,7 @@ def test_get_30_minute_windows():
     start_time = datetime(2023, 1, 1, 10, 15, 0)
     end_time = datetime(2023, 1, 1, 12, 0, 0)
     
-    windows = _get_30_minute_windows(start_time, end_time)
+    windows = get_30_minute_windows(start_time, end_time)
     
     expected_windows = [
         (datetime(2023, 1, 1, 10, 0, 0), datetime(2023, 1, 1, 10, 30, 0)),
@@ -48,7 +48,7 @@ def test_get_30_minute_windows_edge_cases():
     start_time = datetime(2023, 1, 1, 10, 30, 0)
     end_time = datetime(2023, 1, 1, 11, 0, 0)
     
-    windows = _get_30_minute_windows(start_time, end_time)
+    windows = get_30_minute_windows(start_time, end_time)
     expected_windows = [
         (datetime(2023, 1, 1, 10, 30, 0), datetime(2023, 1, 1, 11, 0, 0)),
     ]
@@ -59,7 +59,7 @@ def test_get_30_minute_windows_edge_cases():
     start_time = datetime(2023, 1, 1, 10, 45, 0)
     end_time = datetime(2023, 1, 1, 10, 50, 0)
     
-    windows = _get_30_minute_windows(start_time, end_time)
+    windows = get_30_minute_windows(start_time, end_time)
     assert windows == []  # No complete 30-minute windows in this span
 
 
@@ -117,7 +117,7 @@ def test_average_measure_data():
     )
     records.append(record3)
     
-    averages = _average_measure_data(records)
+    averages = average_measure_data(records)
     
     # Expected averages
     expected = {
@@ -136,7 +136,7 @@ def test_average_measure_data():
 
 def test_average_measure_data_empty_records():
     """Test averaging with empty record list"""
-    averages = _average_measure_data([])
+    averages = average_measure_data([])
     assert averages == {}
 
 
@@ -152,7 +152,7 @@ def test_average_measure_data_no_valid_data():
         }
     )
     
-    averages = _average_measure_data([record])
+    averages = average_measure_data([record])
     assert averages == {}
 
 
@@ -172,7 +172,7 @@ def test_average_measure_data_invalid_data_types():
         }
     )
     
-    averages = _average_measure_data([record])
+    averages = average_measure_data([record])
     
     # Should only average the valid numeric fields (True is converted to 1.0)
     expected = {

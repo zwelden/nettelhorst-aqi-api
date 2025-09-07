@@ -58,7 +58,7 @@ async def main():
         
         # Import the task function
         logger.info("Importing task function...")
-        from app.tasks.scheduled import pull_airgradient_data
+        from app.tasks.airgradient_task import pull_airgradient_data
         
         # Run the task
         logger.info("Starting AirGradient data pull task...")
