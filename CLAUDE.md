@@ -69,12 +69,15 @@ pytest --cov=app
 - `tests/conftest.py`: SQLite test database configuration with JSON/JSONB compatibility
   - Contains fixtures for test database setup and seeding
   - `seed_history_data` fixture creates 14 test records spanning 72 hours for history testing
+  - `seed_30_minute_history_data` fixture creates 30-minute aggregated test data for weekly endpoint testing
 - `tests/test_health.py`: Health endpoint tests (2 test cases)
 - `tests/test_locations.py`: AQI locations endpoint tests (6 comprehensive test cases)
-- `tests/test_history.py`: AQI history endpoint tests (21 comprehensive test cases)
+- `tests/test_history.py`: AQI history endpoint tests (30 comprehensive test cases)
   - Tests for `/api/v1/history/{location_id}/hours` endpoint (10 test cases)
   - Tests for `/api/v1/history/{location_id}/days` endpoint (10 test cases)
+  - Tests for `/api/v1/history/{location_id}/week` endpoint (9 test cases)
   - Cross-endpoint consistency test (1 test case)
+- `tests/test_aggregation.py`: 30-minute data aggregation task tests
 - Tests use temporary SQLite databases for isolation (no mocks required)
 
 ## Architecture Overview
@@ -113,7 +116,10 @@ The application follows a layered architecture with clear separation of concerns
    - `app/crud/`: Database operations layer (currently empty, ready for implementation)
 
 6. **Scheduled Tasks** (`app/tasks/`)
-   - `scheduled.py`: Task definitions and registration
+   - `scheduled.py`: Task registration and scheduling configuration
+   - `airgradient_task.py`: AirGradient API data collection tasks
+   - `aggregation_task.py`: Data aggregation and processing tasks
+   - `utils.py`: Shared task utilities and logging functions
    - Tasks persist in PostgreSQL via APScheduler's SQLAlchemyJobStore
    - Registered during application startup
 
@@ -154,6 +160,16 @@ Stores AQI measurement data at 5-minute intervals:
 - `created_at` (TIMESTAMP(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP): Creation timestamp
 - `updated_at` (TIMESTAMP(3), NOT NULL): Last update timestamp (auto-updated)
 
+#### AQI 30-Minute History (`aqi_30_minute_history`)
+Stores aggregated AQI measurement data at 30-minute intervals:
+- `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
+- `measure_time` (TIMESTAMP(3), NOT NULL, INDEXED): Timestamp of 30-minute window start (indexed for performance)
+- `aqi_location_id` (INTEGER, NOT NULL, FK): Foreign key to `aqi_location.id`
+- `measure_data` (JSON/JSONB, NOT NULL): Averaged measurement data storage with same structure as 5-minute history
+- `created_at` (TIMESTAMP(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP): Creation timestamp
+- `updated_at` (TIMESTAMP(3), NOT NULL): Last update timestamp (auto-updated)
+- Data is automatically aggregated from 5-minute history by scheduled tasks
+
 #### Task Logs (`task_logs`)
 Tracks scheduled task execution history:
 - `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
@@ -167,7 +183,9 @@ Tracks scheduled task execution history:
 
 #### Key Relationships
 - `aqi_5_minute_history.aqi_location_id` → `aqi_location.id` (Foreign Key)
+- `aqi_30_minute_history.aqi_location_id` → `aqi_location.id` (Foreign Key)
 - SQLAlchemy relationships configured for easy navigation between models
+- AqiLocation model includes relationships to both 5-minute and 30-minute history tables
 
 ### Important Configuration
 
@@ -200,6 +218,30 @@ When running, interactive documentation available at:
   - `days`: Number of days to retrieve (1-365, required)
   - Returns measurement records sorted by `measure_time` descending (most recent first)
   - Uses `AqiDataService.get_history_by_days()` for database operations
+- `GET /api/v1/history/{location_id}/week`: Retrieve 30-minute aggregated AQI history for past 7 days
+  - `location_id`: External location identifier from `aqi_location.location_id`
+  - Returns 30-minute averaged measurement records for the past week
+  - Data sorted by `measure_time` ascending (oldest first) for chronological visualization
+  - Uses `AqiDataService.get_30_minute_history_week()` for database operations
+
+## CLI Task Runners
+
+Manual task execution is available via CLI scripts:
+
+### Available CLI Runners
+```bash
+# Manual AirGradient data collection
+python run_airgradient_task.py
+
+# Manual 30-minute data aggregation
+python run_aggregation_task.py
+```
+
+### Task Modules Structure
+- `app/tasks/airgradient_task.py`: Contains `pull_airgradient_data()` function
+- `app/tasks/aggregation_task.py`: Contains `aggregate_30_minute_data()` function
+- `app/tasks/utils.py`: Shared utilities like `log_task_execution()` decorator
+- `app/tasks/scheduled.py`: Task registration and scheduler configuration
 
 ## Important Notes
 
@@ -208,3 +250,5 @@ When running, interactive documentation available at:
 - Scheduler stores job state in PostgreSQL, survives restarts
 - Logs are written to `logs/` directory with rotation
 - All models must be imported in `app/models/__init__.py` for Alembic to detect them
+- 30-minute aggregation includes a 30-minute buffer to ensure complete 5-minute data availability
+- Aggregated values are rounded to 2 decimal places for consistency

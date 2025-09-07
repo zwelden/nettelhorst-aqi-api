@@ -105,6 +105,10 @@ Once running, visit:
   - `location_id`: External location identifier
   - `days`: Number of days to retrieve (1-365, required)
   - Returns measurement records sorted by time (most recent first)
+- `GET /api/v1/history/{location_id}/week` - Retrieve 30-minute aggregated AQI history for past 7 days
+  - `location_id`: External location identifier
+  - Returns 30-minute averaged measurement records for the past week
+  - Data sorted by time (oldest first) for chronological visualization
 
 ## Database Migrations
 
@@ -124,7 +128,14 @@ alembic history
 
 ## Scheduled Tasks
 
-Tasks are defined in `app/tasks/scheduled.py` and registered automatically on application startup. The scheduler uses PostgreSQL to persist job state.
+Tasks are organized into separate modules under `app/tasks/` and registered automatically on application startup. The scheduler uses PostgreSQL to persist job state.
+
+### Task Organization
+
+- `app/tasks/airgradient_task.py`: AirGradient API data collection tasks
+- `app/tasks/aggregation_task.py`: Data aggregation and processing tasks
+- `app/tasks/utils.py`: Shared task utilities and logging functions
+- `app/tasks/scheduled.py`: Task registration and scheduling configuration
 
 ### Active Scheduled Tasks
 
@@ -136,16 +147,30 @@ Tasks are defined in `app/tasks/scheduled.py` and registered automatically on ap
   - Prevents duplicate data insertion
   - Logs all activity to `task_logs` table
 
+- **30-Minute Data Aggregation** (`aggregate_30_minute_data`):
+  - Runs every 30 minutes
+  - Aggregates 5-minute AQI data into 30-minute averages
+  - Averages key fields: rco2_corrected, atmp, tvoc, tvocIndex, rhum_corrected, pm02_corrected
+  - Includes 30-minute buffer to ensure complete 5-minute data availability
+  - Stores aggregated data in `aqi_30_minute_history` table
+  - Rounds averaged values to 2 decimal places for consistency
+
 ### Adding New Scheduled Tasks
 
 To add a new scheduled task:
 
-1. Define your task function in `app/tasks/scheduled.py`
-2. Register it in the `register_scheduled_tasks()` function
+1. Define your task function in the appropriate module under `app/tasks/`
+2. Register it in `app/tasks/scheduled.py` in the `register_scheduled_tasks()` function
 3. Choose scheduling type:
    - Interval: `scheduler.add_job(func, 'interval', hours=1)`
    - Cron: `scheduler.add_job(func, 'cron', hour=0, minute=0)`
    - Date: `scheduler.add_job(func, 'date', run_date=datetime(...))`
+
+### Manual Task Execution
+
+CLI runners are available for manual task execution:
+- `python run_airgradient_task.py`: Manually pull AirGradient data
+- `python run_aggregation_task.py`: Manually run 30-minute data aggregation
 
 ## Testing
 
@@ -188,6 +213,15 @@ Stores AQI measurement data at 5-minute intervals:
 - `aqi_location_id`: Foreign key to `aqi_location.id`
 - `measure_data`: JSONB field for flexible measurement data storage
 - `created_at`, `updated_at`: Automatic timestamps
+
+### AQI 30-Minute History (`aqi_30_minute_history`)
+Stores aggregated AQI measurement data at 30-minute intervals:
+- `id`: Primary key
+- `measure_time`: Timestamp of 30-minute window start (indexed for performance)
+- `aqi_location_id`: Foreign key to `aqi_location.id`
+- `measure_data`: JSONB field containing averaged measurement values
+- `created_at`, `updated_at`: Automatic timestamps
+- Data is automatically aggregated from 5-minute history by scheduled tasks
 
 ### Task Logs (`task_logs`)
 Tracks scheduled task execution:
