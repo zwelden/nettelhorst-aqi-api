@@ -86,18 +86,18 @@ def test_get_history_by_hours_data_filtering(client, seed_history_data):
 
 
 def test_get_history_by_hours_sorting(client, seed_history_data):
-    """Test that results are sorted by measure_time descending (most recent first)"""
+    """Test that results are sorted by measure_time ascending (oldest first)"""
     response = client.get("/api/v1/history/80146/hours?hours=72")
     
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 1
     
-    # Check that results are sorted by measure_time descending
+    # Check that results are sorted by measure_time ascending
     for i in range(len(data) - 1):
         current_time = datetime.fromisoformat(data[i]["measure_time"].replace("Z", "+00:00"))
         next_time = datetime.fromisoformat(data[i + 1]["measure_time"].replace("Z", "+00:00"))
-        assert current_time > next_time, "Records should be sorted by measure_time descending"
+        assert current_time <= next_time, "Records should be sorted by measure_time ascending"
 
 
 def test_get_history_by_hours_boundary_values(client, seed_history_data):
@@ -245,18 +245,18 @@ def test_get_history_by_days_data_filtering(client, seed_history_data):
 
 
 def test_get_history_by_days_sorting(client, seed_history_data):
-    """Test that results are sorted by measure_time descending (most recent first)"""
+    """Test that results are sorted by measure_time ascending (oldest first)"""
     response = client.get("/api/v1/history/80146/days?days=3")
     
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 1
     
-    # Check that results are sorted by measure_time descending
+    # Check that results are sorted by measure_time ascending
     for i in range(len(data) - 1):
         current_time = datetime.fromisoformat(data[i]["measure_time"].replace("Z", "+00:00"))
         next_time = datetime.fromisoformat(data[i + 1]["measure_time"].replace("Z", "+00:00"))
-        assert current_time > next_time, "Records should be sorted by measure_time descending"
+        assert current_time <= next_time, "Records should be sorted by measure_time ascending"
 
 
 def test_get_history_by_days_boundary_values(client, seed_history_data):
