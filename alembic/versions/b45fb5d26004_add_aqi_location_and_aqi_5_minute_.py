@@ -31,7 +31,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_task_logs_id'), 'task_logs', ['id'], unique=False)
     op.create_index(op.f('ix_task_logs_task_name'), 'task_logs', ['task_name'], unique=False)
-    op.drop_table('_prisma_migrations')
     op.alter_column('aqi_5_minute_history', 'measure_time',
                existing_type=postgresql.TIMESTAMP(precision=3),
                type_=sa.DateTime(timezone=True),
@@ -91,17 +90,6 @@ def downgrade() -> None:
                existing_type=sa.DateTime(timezone=True),
                type_=postgresql.TIMESTAMP(precision=3),
                existing_nullable=False)
-    op.create_table('_prisma_migrations',
-    sa.Column('id', sa.VARCHAR(length=36), autoincrement=False, nullable=False),
-    sa.Column('checksum', sa.VARCHAR(length=64), autoincrement=False, nullable=False),
-    sa.Column('finished_at', postgresql.TIMESTAMP(timezone=True), autoincrement=False, nullable=True),
-    sa.Column('migration_name', sa.VARCHAR(length=255), autoincrement=False, nullable=False),
-    sa.Column('logs', sa.TEXT(), autoincrement=False, nullable=True),
-    sa.Column('rolled_back_at', postgresql.TIMESTAMP(timezone=True), autoincrement=False, nullable=True),
-    sa.Column('started_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), autoincrement=False, nullable=False),
-    sa.Column('applied_steps_count', sa.INTEGER(), server_default=sa.text('0'), autoincrement=False, nullable=False),
-    sa.PrimaryKeyConstraint('id', name='_prisma_migrations_pkey')
-    )
     op.drop_index(op.f('ix_task_logs_task_name'), table_name='task_logs')
     op.drop_index(op.f('ix_task_logs_id'), table_name='task_logs')
     op.drop_table('task_logs')
