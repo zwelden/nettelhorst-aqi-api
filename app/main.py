@@ -37,7 +37,18 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure based on your requirements
+    allow_origins=[
+        "http://nettelhorstaqi.com", 
+        "https://nettelhorstaqi.com",
+        "http://api.nettelhorstaqi.com",
+        "https://api.nettelhorstaqi.com",
+        "https://admin.nettelhorstaqi.com",
+        "http://localhost",
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "http://localhost:8000",
+        "http://localhost:8001"
+    ],  # Configure based on your requirements
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
