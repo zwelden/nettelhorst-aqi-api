@@ -1,12 +1,13 @@
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.models.aqi_location import AqiLocation
 from app.models.aqi_5_minute_history import Aqi5MinuteHistory
+from app.models.aqi_30_minute_history import Aqi30MinuteHistory
 
 logger = logging.getLogger(__name__)
 
@@ -240,6 +241,43 @@ class AqiDataService:
                 
         except Exception as e:
             logger.error(f"Error retrieving history for location {location_id}: {str(e)}")
+            raise
+    
+    def get_30_minute_history_week(self, location_id: int) -> List[Aqi30MinuteHistory]:
+        """
+        Get AQI 30-minute history data for a location for the past 7 days
+        
+        Args:
+            location_id: The external location ID
+            
+        Returns:
+            List of Aqi30MinuteHistory objects sorted by measure_time ascending
+        """
+        try:
+            with SessionLocal() as db:
+                # First get the AqiLocation by location_id
+                aqi_location = db.query(AqiLocation).filter(
+                    AqiLocation.location_id == location_id
+                ).first()
+                
+                if not aqi_location:
+                    logger.warning(f"No AQI location found for location_id {location_id}")
+                    return []
+                
+                # Calculate cutoff time (7 days ago)
+                cutoff_time = datetime.now(timezone.utc) - timedelta(days=7)
+                
+                # Query 30-minute history records
+                history_records = db.query(Aqi30MinuteHistory).filter(
+                    Aqi30MinuteHistory.aqi_location_id == aqi_location.id,
+                    Aqi30MinuteHistory.measure_time >= cutoff_time
+                ).order_by(Aqi30MinuteHistory.measure_time.asc()).all()
+                
+                logger.info(f"Retrieved {len(history_records)} 30-minute history records for location {location_id} (past 7 days)")
+                return history_records
+                
+        except Exception as e:
+            logger.error(f"Error retrieving 30-minute history for location {location_id}: {str(e)}")
             raise
 
 

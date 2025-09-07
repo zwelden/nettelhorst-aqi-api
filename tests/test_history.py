@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 
 # Tests for /api/v1/history/{location_id}/hours endpoint
@@ -361,3 +361,177 @@ def test_history_endpoints_consistency(client, seed_history_data):
     hours_ids = sorted([record["id"] for record in hours_data])
     days_ids = sorted([record["id"] for record in days_data])
     assert hours_ids == days_ids
+
+
+# Tests for /api/v1/history/{location_id}/week endpoint
+
+
+def test_get_history_week_empty(client):
+    """Test GET /history/{location_id}/week with empty database"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
+def test_get_history_week_invalid_location(client, seed_30_minute_history_data):
+    """Test GET /history/{location_id}/week with non-existent location"""
+    response = client.get("/api/v1/history/99999/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
+def test_get_history_week_returns_7_days(client, seed_30_minute_history_data):
+    """Test GET /history/{location_id}/week returns exactly 7 days of data"""
+    summary = seed_30_minute_history_data
+    
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == summary["records_last_7_days"]
+    
+    # Verify response schema for 30-minute history
+    if len(data) > 0:
+        record = data[0]
+        assert "id" in record
+        assert "measure_time" in record
+        assert "aqi_location_id" in record
+        assert "measure_data" in record
+        assert "created_at" in record
+        assert "updated_at" in record
+
+
+def test_get_history_week_ascending_order(client, seed_30_minute_history_data):
+    """Test that results are sorted by measure_time ascending (oldest first)"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 1
+    
+    # Check that results are sorted by measure_time ascending
+    for i in range(len(data) - 1):
+        current_time = datetime.fromisoformat(data[i]["measure_time"].replace("Z", "+00:00"))
+        next_time = datetime.fromisoformat(data[i + 1]["measure_time"].replace("Z", "+00:00"))
+        assert current_time <= next_time, "Records should be sorted by measure_time ascending (oldest first)"
+
+
+def test_get_history_week_data_filtering(client, seed_30_minute_history_data):
+    """Test that only last 7 days of data are included"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Should only include records from last 7 days
+    assert len(data) == seed_30_minute_history_data["records_last_7_days"]
+    
+    # Verify all records are within 7 days
+    now = datetime.now()
+    seven_days_ago = now - timedelta(days=7)
+    
+    for record in data:
+        measure_time_str = record["measure_time"].replace("Z", "").replace("T", " ")
+        measure_time = datetime.fromisoformat(measure_time_str)
+        assert measure_time >= seven_days_ago, f"Record {record['id']} is older than 7 days"
+
+
+def test_get_history_week_response_schema(client, seed_30_minute_history_data):
+    """Test that response matches Aqi30MinuteHistoryResponse schema"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    
+    record = data[0]
+    
+    # Define expected fields and their types for 30-minute history
+    expected_fields = {
+        "id": int,
+        "measure_time": str,
+        "aqi_location_id": int,
+        "measure_data": dict,
+        "created_at": str,
+        "updated_at": str
+    }
+    
+    # Verify all expected fields are present
+    for field_name in expected_fields:
+        assert field_name in record, f"Missing field: {field_name}"
+    
+    # Verify field types
+    for field_name, expected_type in expected_fields.items():
+        assert isinstance(record[field_name], expected_type), \
+            f"Field {field_name} should be {expected_type}, got {type(record[field_name])}"
+    
+    # Verify measure_data contains expected AQI fields
+    measure_data = record["measure_data"]
+    assert "atmp" in measure_data
+    assert "rco2" in measure_data
+    assert "locationId" in measure_data
+    assert measure_data["locationId"] == 80146
+    
+    # Verify this is 30-minute aggregated data (should have datapoints = 6)
+    assert "datapoints" in measure_data
+    assert measure_data["datapoints"] == 6
+
+
+def test_get_history_week_30_minute_intervals(client, seed_30_minute_history_data):
+    """Test that data comes from 30-minute history table with proper intervals"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 10  # Should have many records with 30-minute intervals
+    
+    # Check that timestamps are at 30-minute intervals (when sorted)
+    timestamps = [datetime.fromisoformat(record["measure_time"].replace("Z", "+00:00")) for record in data]
+    
+    # Verify we have expected number of records for 7 days at 30-minute intervals
+    # 7 days * 24 hours * 2 (30-minute intervals per hour) = 336 records
+    expected_count = seed_30_minute_history_data["records_last_7_days"]
+    assert len(data) == expected_count
+    
+    # Check intervals between consecutive records (should be 30 minutes)
+    for i in range(min(10, len(timestamps) - 1)):  # Check first 10 intervals
+        time_diff = timestamps[i + 1] - timestamps[i]
+        # Should be 30 minutes (1800 seconds)
+        assert time_diff.total_seconds() == 1800, f"Expected 30-minute interval, got {time_diff.total_seconds()} seconds"
+
+
+def test_get_history_week_json_content_type(client, seed_30_minute_history_data):
+    """Test that response has correct content type"""
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
+
+
+def test_get_history_week_excludes_older_data(client, seed_30_minute_history_data):
+    """Test that data older than 7 days is excluded"""
+    summary = seed_30_minute_history_data
+    
+    response = client.get("/api/v1/history/80146/week")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Should only return records from last 7 days, not older records
+    assert len(data) == summary["records_last_7_days"]
+    
+    # Verify no records are older than 7 days
+    now = datetime.now()
+    seven_days_ago = now - timedelta(days=7)
+    
+    for record in data:
+        measure_time_str = record["measure_time"].replace("Z", "").replace("T", " ")
+        measure_time = datetime.fromisoformat(measure_time_str)
+        assert measure_time >= seven_days_ago, f"Found record older than 7 days: {measure_time}"

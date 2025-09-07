@@ -13,6 +13,7 @@ postgresql.JSONB = JSON
 from app.core.database import Base
 from app.models.aqi_location import AqiLocation
 from app.models.aqi_5_minute_history import Aqi5MinuteHistory
+from app.models.aqi_30_minute_history import Aqi30MinuteHistory
 from app.main import app
 
 
@@ -258,6 +259,103 @@ def seed_history_data(test_db, seed_single_location):
             "records_last_72h": 14, # All records
             "oldest_record_hours": 72,
             "newest_record_hours": 1
+        }
+        
+    finally:
+        db.close()
+
+
+@pytest.fixture
+def seed_30_minute_history_data(test_db, seed_single_location):
+    """Seed database with 30-minute history data for testing weekly queries"""
+    db = test_db()
+    try:
+        location = seed_single_location
+        now = datetime.now(timezone.utc)
+        
+        # Create 30-minute history records spanning 10 days
+        history_records = []
+        
+        # Records from 8-10 days ago (every 2 hours) - 24 records
+        for hours_ago in range(192, 240, 2):  # 8-10 days ago
+            measure_time = now - timedelta(hours=hours_ago)
+            data = {
+                "atmp": 20.0 + (hours_ago % 12),
+                "pm01": 0,
+                "pm02": hours_ago % 6,
+                "pm10": hours_ago % 4,
+                "rco2": 380 + (hours_ago % 25),
+                "rhum": 28 + (hours_ago % 18),
+                "tvoc": 40 + (hours_ago % 35),
+                "wifi": -60 - (hours_ago % 12),
+                "model": "O-1PS",
+                "noxIndex": 1,
+                "serialno": "744dbdc08034",
+                "timestamp": measure_time.isoformat(),
+                "tvocIndex": 45 + (hours_ago % 20),
+                "datapoints": 6,
+                "locationId": 80146,
+                "locationName": "3252 N Broadway, Chicago IL 60657",
+                "firmwareVersion": "3.3.9"
+            }
+            
+            record = Aqi30MinuteHistory(
+                measure_time=measure_time,
+                aqi_location_id=location.id,
+                measure_data=data,
+                created_at=now,
+                updated_at=now
+            )
+            history_records.append(record)
+        
+        # Records from past 7 days (every 30 minutes) - 336 records
+        for minutes_ago in range(0, 10080, 30):  # 7 days * 24 hours * 60 minutes, every 30 minutes
+            measure_time = now - timedelta(minutes=minutes_ago)
+            hours_equivalent = minutes_ago / 60
+            
+            data = {
+                "atmp": 22.0 + (minutes_ago % 15),
+                "pm01": 0,
+                "pm02": int(minutes_ago / 30) % 8,
+                "pm10": int(minutes_ago / 60) % 5,
+                "rco2": 400 + (minutes_ago % 30),
+                "rhum": 35 + (minutes_ago % 20),
+                "tvoc": 65 + (minutes_ago % 45),
+                "wifi": -65 - (minutes_ago % 15),
+                "model": "O-1PS",
+                "noxIndex": 1,
+                "serialno": "744dbdc08034",
+                "timestamp": measure_time.isoformat(),
+                "tvocIndex": 70 + (minutes_ago % 25),
+                "datapoints": 6,
+                "locationId": 80146,
+                "locationName": "3252 N Broadway, Chicago IL 60657",
+                "firmwareVersion": "3.3.9"
+            }
+            
+            record = Aqi30MinuteHistory(
+                measure_time=measure_time,
+                aqi_location_id=location.id,
+                measure_data=data,
+                created_at=now,
+                updated_at=now
+            )
+            history_records.append(record)
+        
+        # Add all records to database
+        for record in history_records:
+            db.add(record)
+        
+        db.commit()
+        
+        # Return summary info for tests
+        return {
+            "location": location,
+            "total_records": len(history_records),  # 360 total (24 + 336)
+            "records_last_7_days": 336,  # Records within 7 days (30-minute intervals)
+            "records_older_than_7_days": 24,  # Records older than 7 days
+            "oldest_record_days": 10,
+            "interval_minutes": 30
         }
         
     finally:

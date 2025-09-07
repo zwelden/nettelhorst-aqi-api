@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.aqi_5_minute_history import Aqi5MinuteHistoryResponse
+from app.schemas.aqi_30_minute_history import Aqi30MinuteHistoryResponse
 from app.services.aqi_data_service import AqiDataService
 
 router = APIRouter()
@@ -51,3 +52,24 @@ async def get_history_by_days(
         return history_records
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving history data: {str(e)}")
+
+
+@router.get("/{location_id}/week", response_model=List[Aqi30MinuteHistoryResponse])
+async def get_history_week(
+    location_id: int
+):
+    """
+    Retrieve AQI 30-minute history data for the past 7 days for a specific location.
+    
+    Args:
+        location_id: The external location ID
+    
+    Returns:
+        List of AQI 30-minute measurement records sorted by measure_time ascending (oldest first)
+    """
+    try:
+        service = AqiDataService()
+        history_records = service.get_30_minute_history_week(location_id)
+        return history_records
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving weekly history data: {str(e)}")
