@@ -37,6 +37,9 @@ def get_30_minute_windows(start_time: datetime, end_time: datetime) -> List[tupl
         window_start = current
         if current.minute == 0:
             window_end = current.replace(minute=30)
+        elif current.hour == 23:
+            window_end_temp = current + timedelta(days=1)
+            window_end = window_end_temp.replace(hour=0, minute=0)
         else:
             window_end = current.replace(hour=current.hour + 1, minute=0)
         
@@ -65,7 +68,7 @@ def average_measure_data(records: List[Aqi5MinuteHistory]) -> Dict[str, float]:
                     values.append(float(value))
         
         if values:
-            averages[field] = sum(values) / len(values)
+            averages[field] = round(sum(values) / len(values), 2)
     
     return averages
 
