@@ -4,6 +4,7 @@ from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .aqi_5_minute_history import Aqi5MinuteHistoryResponse
+    from .aqi_30_minute_history import Aqi30MinuteHistoryResponse
 
 
 class AqiLocationBase(BaseModel):
@@ -39,6 +40,21 @@ class AqiLocationResponse(AqiLocationBase):
 
 class AqiLocationWithHistory(AqiLocationResponse):
     history_records: List["Aqi5MinuteHistoryResponse"] = []
+    
+    class Config:
+        from_attributes = True
+
+
+class AqiLocationWith30MinuteHistory(AqiLocationResponse):
+    thirty_minute_history_records: List["Aqi30MinuteHistoryResponse"] = []
+    
+    class Config:
+        from_attributes = True
+
+
+class AqiLocationWithAllHistory(AqiLocationResponse):
+    history_records: List["Aqi5MinuteHistoryResponse"] = []
+    thirty_minute_history_records: List["Aqi30MinuteHistoryResponse"] = []
     
     class Config:
         from_attributes = True

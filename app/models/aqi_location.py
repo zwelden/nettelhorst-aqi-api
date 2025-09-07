@@ -17,5 +17,6 @@ class AqiLocation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
-    # Relationship
+    # Relationships
     history_records = relationship("Aqi5MinuteHistory", back_populates="location")
+    thirty_minute_history_records = relationship("Aqi30MinuteHistory", back_populates="location")

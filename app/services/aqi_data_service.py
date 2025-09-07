@@ -175,7 +175,7 @@ class AqiDataService:
             hours: Number of hours to retrieve data for (default 24)
             
         Returns:
-            List of Aqi5MinuteHistory objects sorted by measure_time descending
+            List of Aqi5MinuteHistory objects sorted by measure_time ascending
         """
         try:
             with SessionLocal() as db:
@@ -195,7 +195,7 @@ class AqiDataService:
                 history_records = db.query(Aqi5MinuteHistory).filter(
                     Aqi5MinuteHistory.aqi_location_id == aqi_location.id,
                     Aqi5MinuteHistory.measure_time >= cutoff_time
-                ).order_by(Aqi5MinuteHistory.measure_time.desc()).all()
+                ).order_by(Aqi5MinuteHistory.measure_time.asc()).all()
                 
                 logger.info(f"Retrieved {len(history_records)} history records for location {location_id} (past {hours} hours)")
                 return history_records
@@ -213,7 +213,7 @@ class AqiDataService:
             days: Number of days to retrieve data for
             
         Returns:
-            List of Aqi5MinuteHistory objects sorted by measure_time descending
+            List of Aqi5MinuteHistory objects sorted by measure_time ascending
         """
         try:
             with SessionLocal() as db:
@@ -233,7 +233,7 @@ class AqiDataService:
                 history_records = db.query(Aqi5MinuteHistory).filter(
                     Aqi5MinuteHistory.aqi_location_id == aqi_location.id,
                     Aqi5MinuteHistory.measure_time >= cutoff_time
-                ).order_by(Aqi5MinuteHistory.measure_time.desc()).all()
+                ).order_by(Aqi5MinuteHistory.measure_time.asc()).all()
                 
                 logger.info(f"Retrieved {len(history_records)} history records for location {location_id} (past {days} days)")
                 return history_records
