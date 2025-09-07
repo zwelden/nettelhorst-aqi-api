@@ -96,6 +96,16 @@ Once running, visit:
   - Returns JSON array of location objects with metadata
   - Includes location details, device information, and timestamps
 
+#### AQI History Data
+- `GET /api/v1/history/{location_id}/hours?hours=N` - Retrieve AQI history for past N hours
+  - `location_id`: External location identifier
+  - `hours`: Number of hours to retrieve (1-168, default: 24)
+  - Returns measurement records sorted by time (most recent first)
+- `GET /api/v1/history/{location_id}/days?days=N` - Retrieve AQI history for past N days  
+  - `location_id`: External location identifier
+  - `days`: Number of days to retrieve (1-365, required)
+  - Returns measurement records sorted by time (most recent first)
+
 ## Database Migrations
 
 ```bash
@@ -146,6 +156,8 @@ pytest
 
 # Run specific test file
 pytest tests/test_health.py
+pytest tests/test_locations.py  
+pytest tests/test_history.py
 
 # Run with verbose output
 pytest -v

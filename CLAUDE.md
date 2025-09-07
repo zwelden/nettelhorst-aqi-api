@@ -56,6 +56,7 @@ pytest
 # Run specific test file
 pytest tests/test_health.py
 pytest tests/test_locations.py
+pytest tests/test_history.py
 
 # Run with verbose output
 pytest -v
@@ -65,9 +66,15 @@ pytest --cov=app
 ```
 
 #### Test Structure
-- `tests/conftest.py`: SQLite test database configuration with JSONB compatibility
-- `tests/test_health.py`: Health endpoint tests
+- `tests/conftest.py`: SQLite test database configuration with JSON/JSONB compatibility
+  - Contains fixtures for test database setup and seeding
+  - `seed_history_data` fixture creates 14 test records spanning 72 hours for history testing
+- `tests/test_health.py`: Health endpoint tests (2 test cases)
 - `tests/test_locations.py`: AQI locations endpoint tests (6 comprehensive test cases)
+- `tests/test_history.py`: AQI history endpoint tests (21 comprehensive test cases)
+  - Tests for `/api/v1/history/{location_id}/hours` endpoint (10 test cases)
+  - Tests for `/api/v1/history/{location_id}/days` endpoint (10 test cases)
+  - Cross-endpoint consistency test (1 test case)
 - Tests use temporary SQLite databases for isolation (no mocks required)
 
 ## Architecture Overview
@@ -101,7 +108,8 @@ The application follows a layered architecture with clear separation of concerns
    - All routes prefixed with `/api/v1`
 
 5. **Business Logic**
-   - `app/services/`: Business logic layer (currently empty, ready for implementation)
+   - `app/services/`: Business logic layer with `AqiDataService` for database operations
+     - `aqi_data_service.py`: Contains methods for location and history data retrieval
    - `app/crud/`: Database operations layer (currently empty, ready for implementation)
 
 6. **Scheduled Tasks** (`app/tasks/`)
@@ -142,7 +150,7 @@ Stores AQI measurement data at 5-minute intervals:
 - `id` (INTEGER, PRIMARY KEY): Auto-incrementing primary key
 - `measure_time` (TIMESTAMP(3), NOT NULL, INDEXED): Timestamp of measurement (indexed for performance)
 - `aqi_location_id` (INTEGER, NOT NULL, FK): Foreign key to `aqi_location.id`
-- `measure_data` (JSONB, NOT NULL): Flexible measurement data storage in JSON format
+- `measure_data` (JSON/JSONB, NOT NULL): Flexible measurement data storage using `JSON().with_variant(JSONB(), "postgresql")` for cross-database compatibility
 - `created_at` (TIMESTAMP(3), NOT NULL, DEFAULT CURRENT_TIMESTAMP): Creation timestamp
 - `updated_at` (TIMESTAMP(3), NOT NULL): Last update timestamp (auto-updated)
 
@@ -182,6 +190,16 @@ When running, interactive documentation available at:
   - Returns JSON array of location objects with complete metadata
   - Uses `AqiDataService` for database operations
   - Includes location details, device information, and timestamps
+- `GET /api/v1/history/{location_id}/hours?hours=N`: Retrieve AQI history for past N hours
+  - `location_id`: External location identifier from `aqi_location.location_id`
+  - `hours`: Number of hours to retrieve (1-168, default: 24)
+  - Returns measurement records sorted by `measure_time` descending (most recent first)
+  - Uses `AqiDataService.get_history_by_hours()` for database operations
+- `GET /api/v1/history/{location_id}/days?days=N`: Retrieve AQI history for past N days
+  - `location_id`: External location identifier from `aqi_location.location_id`
+  - `days`: Number of days to retrieve (1-365, required)
+  - Returns measurement records sorted by `measure_time` descending (most recent first)
+  - Uses `AqiDataService.get_history_by_days()` for database operations
 
 ## Important Notes
 
