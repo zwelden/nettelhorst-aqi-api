@@ -272,3 +272,12 @@ See `.env.example` for all available configuration options:
 - **No data being collected**: Verify `AIRGRADIENT_API_TOKEN` is valid
 - **Task failures**: Check `task_logs.error_message` for details
 - **Missing locations**: Ensure locations exist in `aqi_location` table
+
+## Useful links - deployment
+https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04  
+https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-20-04  
+https://hereiskunalverma.medium.com/how-to-deploy-fastapi-python-on-digital-ocean-droplet-54193bf469a1  
+https://www.femiadigun.com/devops/cicd/do  
+https://code2deploy.com/blog/comprehensive-guide-to-setting-up-postgresql-in-a-production-environment/  
+https://learnsql.com/blog/postgresql-cheat-sheet/postgresql-cheat-sheet-a4.pdf  
+https://santoshm.com.np/2024/02/15/deploying-a-fastapi-project-on-a-linux-server-with-nginx-and-systemd-service-a-simplified-guide-with-uvicorn-and-hot-reload/  
